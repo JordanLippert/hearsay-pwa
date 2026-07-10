@@ -1,0 +1,11 @@
+{
+  "name": "pwa-voice-interpreter",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0"
+  }
+}

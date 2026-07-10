@@ -20,5 +20,6 @@ export type VoiceResult =
 
 export interface IntentDefinition {
   intent: string;
+  /** Template strings with `{name}` placeholders, e.g. `"adicionar {item}"`. Not regex or glob. */
   patterns: string[];
 }

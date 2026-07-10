@@ -39,6 +39,7 @@ export class AudioRecorder {
         return;
       }
       if (this.mediaRecorder.state === "inactive") {
+        this.releaseStream();
         resolve(new Blob(this.chunks, { type: "audio/webm" }));
         return;
       }

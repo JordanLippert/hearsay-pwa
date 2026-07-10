@@ -1,6 +1,10 @@
 // packages/react/src/useVoiceCommand.test.tsx
-import { test, expect, mock, beforeEach } from "bun:test";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { test, expect, mock, beforeEach, afterEach } from "bun:test";
+import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
+
+afterEach(() => {
+  cleanup();
+});
 
 const startMock = mock(async () => {});
 const stopMock = mock(async () => new Blob(["fake-audio"]));

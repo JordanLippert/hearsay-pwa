@@ -1,6 +1,10 @@
-import { test, expect, mock } from "bun:test";
-import { render, fireEvent } from "@testing-library/react";
+import { test, expect, mock, afterEach } from "bun:test";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 import { VoiceButton } from "./VoiceButton";
+
+afterEach(() => {
+  cleanup();
+});
 
 test("press-release mode calls onStart on pointer down and onStop on pointer up", () => {
   const onStart = mock(() => {});

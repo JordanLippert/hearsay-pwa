@@ -30,6 +30,10 @@ export function VoiceButton({
     // Ignore a second simultaneous pointer (e.g. a second finger) while already tracking one.
     if (startYRef.current !== null) return;
     if (e.button !== 0) return;
+    // Optional chaining: always present in evergreen browsers (this is a PWA target),
+    // absent only in the test environment (happy-dom) and some legacy embedded WebViews.
+    // If genuinely absent at runtime, the drag-lock gesture silently stops tracking once
+    // the finger leaves the button's bounds — press-release mode is unaffected.
     e.currentTarget.setPointerCapture?.(e.pointerId);
     startYRef.current = e.clientY;
     setLocked(false);

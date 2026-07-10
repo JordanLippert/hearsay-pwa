@@ -49,6 +49,22 @@ test("load() throws ModelLoadError when both backends fail", async () => {
   await expect(engine.load(() => {})).rejects.toBeInstanceOf(ModelLoadError);
 });
 
+test("load() preserves the underlying error as cause", async () => {
+  const underlying = new Error("network down");
+  pipelineFn.mockImplementation(async () => {
+    throw underlying;
+  });
+  const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
+  const engine = new TranscriptionEngine();
+  try {
+    await engine.load(() => {});
+    expect.unreachable();
+  } catch (err) {
+    expect(err).toBeInstanceOf(ModelLoadError);
+    expect((err as Error).cause).toBe(underlying);
+  }
+});
+
 test("transcribe() returns trimmed text from the pipeline", async () => {
   const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
   const engine = new TranscriptionEngine();

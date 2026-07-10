@@ -7,6 +7,8 @@ export interface VoiceButtonProps {
   lockThreshold?: number;
   onStart: () => void;
   onStop: () => void;
+  /** Only ever called with `true` — there is no built-in unlock path; the consumer's
+   * lock-region UI is responsible for calling `stop()` directly to end a locked recording. */
   onLockChange?: (locked: boolean) => void;
   className?: string;
   children?: ReactNode;
@@ -25,6 +27,10 @@ export function VoiceButton({
   const [locked, setLocked] = useState(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Ignore a second simultaneous pointer (e.g. a second finger) while already tracking one.
+    if (startYRef.current !== null) return;
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     startYRef.current = e.clientY;
     setLocked(false);
     onStart();
@@ -39,10 +45,32 @@ export function VoiceButton({
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
     startYRef.current = null;
     if (mode === "press-drag-lock" && locked) return;
     onStop();
+  };
+
+  const handlePointerCancel = () => {
+    startYRef.current = null;
+    setLocked(false);
+    onStop();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === " " || e.key === "Enter") && startYRef.current === null) {
+      e.preventDefault();
+      startYRef.current = 0; // sentinel: keyboard-activated, not a real pointer position
+      onStart();
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === " " || e.key === "Enter") {
+      startYRef.current = null;
+      onStop();
+    }
   };
 
   return (
@@ -52,6 +80,9 @@ export function VoiceButton({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
     >
       {children}
     </button>

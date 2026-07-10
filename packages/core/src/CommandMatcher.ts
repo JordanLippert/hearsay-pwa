@@ -22,6 +22,11 @@ function compilePattern(intent: string, pattern: string): CompiledPattern {
   return { intent, regex: new RegExp(`^${escaped}$`, "i"), paramNames };
 }
 
+/**
+ * Patterns come from developer-authored `IntentDefinition[]` config, never from
+ * transcribed voice input — `match()`'s `text` argument is only ever tested against
+ * compiled patterns, never compiled into one itself.
+ */
 export class CommandMatcher {
   private compiled: CompiledPattern[];
 

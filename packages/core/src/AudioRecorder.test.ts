@@ -66,3 +66,12 @@ test("cancel() discards the recording without returning a blob", async () => {
   recorder.cancel();
   expect(FakeMediaRecorder.instances[0].state).toBe("inactive");
 });
+
+test("start() throws when called again while already recording", async () => {
+  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const recorder = new AudioRecorder();
+  await recorder.start();
+  await expect(recorder.start()).rejects.toThrow(
+    "AudioRecorder.start() called while already recording",
+  );
+});

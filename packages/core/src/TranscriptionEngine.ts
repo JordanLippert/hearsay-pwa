@@ -38,8 +38,8 @@ export class TranscriptionEngine {
         device: "wasm",
         progress_callback: onProgress,
       })) as unknown as Transcriber;
-    } catch {
-      throw new ModelLoadError("Failed to load transcription model on webgpu or wasm");
+    } catch (cause) {
+      throw new ModelLoadError("Failed to load transcription model on webgpu or wasm", { cause });
     }
   }
 

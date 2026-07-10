@@ -1,4 +1,3 @@
-// packages/core/src/AudioRecorder.ts
 import { MicPermissionError } from "./types";
 
 export class AudioRecorder {
@@ -43,7 +42,7 @@ export class AudioRecorder {
   }
 
   private releaseStream(): void {
-    this.stream?.getTracks?.().forEach((track) => track.stop());
+    this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
   }
 }

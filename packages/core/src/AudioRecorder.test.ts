@@ -32,7 +32,7 @@ function installFakes(getUserMediaImpl: () => Promise<unknown>) {
 }
 
 beforeEach(() => {
-  installFakes(async () => ({ id: "fake-stream" }));
+  installFakes(async () => ({ id: "fake-stream", getTracks: () => [] }));
 });
 
 test("start() requests mic and begins recording", async () => {

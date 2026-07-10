@@ -1,4 +1,3 @@
-// packages/react/src/useVoiceCommand.ts
 import { useCallback, useRef, useState } from "react";
 import {
   AudioRecorder,

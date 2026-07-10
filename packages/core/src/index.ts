@@ -1,4 +1,3 @@
-// packages/core/src/index.ts
 export { CommandMatcher } from "./CommandMatcher";
 export { AudioRecorder } from "./AudioRecorder";
 export { TranscriptionEngine } from "./TranscriptionEngine";

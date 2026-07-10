@@ -1,6 +1,13 @@
 // packages/core/src/AudioRecorder.test.ts
-import { test, expect, beforeEach } from "bun:test";
+import { test, expect, beforeEach, afterAll } from "bun:test";
 import { MicPermissionError } from "./types";
+
+// Bun runs all test files in one process, so globalThis mutations below would
+// otherwise leak into files that run after this one (e.g. React component
+// tests that rely on happy-dom's real `navigator`/`window`). Snapshot
+// whatever was there before we start faking, and put it back in afterAll.
+const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+const originalMediaRecorder = Object.getOwnPropertyDescriptor(globalThis, "MediaRecorder");
 
 class FakeMediaRecorder {
   static instances: FakeMediaRecorder[] = [];
@@ -26,10 +33,31 @@ class FakeMediaRecorder {
 function installFakes(getUserMediaImpl: () => Promise<unknown>) {
   FakeMediaRecorder.instances = [];
   (globalThis as any).MediaRecorder = FakeMediaRecorder;
-  (globalThis as any).navigator = {
-    mediaDevices: { getUserMedia: getUserMediaImpl },
-  };
+  // Use defineProperty instead of direct assignment: once happy-dom's global
+  // preload (packages/react/happydom.setup.ts, wired via the root bunfig.toml
+  // for React component tests) registers a getter-only `navigator` on
+  // globalThis, a plain `globalThis.navigator = ...` throws
+  // "Attempted to assign to readonly property". defineProperty with
+  // configurable:true works whether or not that preload ran.
+  Object.defineProperty(globalThis, "navigator", {
+    value: { mediaDevices: { getUserMedia: getUserMediaImpl } },
+    configurable: true,
+    writable: true,
+  });
 }
+
+afterAll(() => {
+  if (originalNavigator) {
+    Object.defineProperty(globalThis, "navigator", originalNavigator);
+  } else {
+    delete (globalThis as any).navigator;
+  }
+  if (originalMediaRecorder) {
+    Object.defineProperty(globalThis, "MediaRecorder", originalMediaRecorder);
+  } else {
+    delete (globalThis as any).MediaRecorder;
+  }
+});
 
 beforeEach(() => {
   installFakes(async () => ({ id: "fake-stream", getTracks: () => [] }));

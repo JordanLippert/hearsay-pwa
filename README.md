@@ -14,7 +14,7 @@ import { useVoiceCommand } from "@pwa-voice-interpreter/react";
 import { VoiceButton } from "@pwa-voice-interpreter/react";
 
 function ShoppingList() {
-  const { start, stop, status, result } = useVoiceCommand({
+  const { start, stop, status, result, error } = useVoiceCommand({
     intents: [
       { intent: "add_item", patterns: ["adicionar {item}", "add {item}"] },
       { intent: "remove_item", patterns: ["remover {item}", "remove {item}"] },
@@ -22,9 +22,12 @@ function ShoppingList() {
   });
 
   return (
-    <VoiceButton mode="press-release" onStart={start} onStop={stop}>
-      {status === "recording" ? "Recording…" : "Hold to talk"}
-    </VoiceButton>
+    <>
+      <VoiceButton mode="press-release" onStart={start} onStop={stop}>
+        {status === "recording" ? "Recording…" : "Hold to talk"}
+      </VoiceButton>
+      {error && <p role="alert">{error.message}</p>}
+    </>
   );
 }
 ```

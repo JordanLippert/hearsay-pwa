@@ -5,6 +5,7 @@ import {
   CommandMatcher,
   type IntentDefinition,
   type VoiceResult,
+  type ModelLoadProgress,
 } from "@pwa-voice-interpreter/core";
 
 export type VoiceCommandStatus = "idle" | "recording" | "transcribing" | "done";
@@ -17,35 +18,61 @@ export interface UseVoiceCommandOptions {
 export function useVoiceCommand(options: UseVoiceCommandOptions) {
   const [status, setStatus] = useState<VoiceCommandStatus>("idle");
   const [result, setResult] = useState<VoiceResult | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loadProgress, setLoadProgress] = useState<ModelLoadProgress | null>(null);
 
-  const recorderRef = useRef<AudioRecorder>();
-  const engineRef = useRef<TranscriptionEngine>();
-  const matcherRef = useRef<CommandMatcher>();
+  const recorderRef = useRef<AudioRecorder | undefined>(undefined);
+  const engineRef = useRef<TranscriptionEngine | undefined>(undefined);
+  const matcherRef = useRef<CommandMatcher | undefined>(undefined);
+  // Mirrors `status` synchronously so the start()/stop() guards below always see the
+  // latest value even though the callbacks have an empty dependency array (React state
+  // read via closure would be stale between renders).
+  const statusRef = useRef<VoiceCommandStatus>("idle");
 
   if (!recorderRef.current) recorderRef.current = new AudioRecorder();
   if (!engineRef.current) engineRef.current = new TranscriptionEngine({ model: options.model });
   if (!matcherRef.current) matcherRef.current = new CommandMatcher(options.intents);
 
-  const start = useCallback(async () => {
-    setStatus("recording");
-    setResult(null);
-    await engineRef.current!.load(() => {});
-    await recorderRef.current!.start();
+  const updateStatus = useCallback((next: VoiceCommandStatus) => {
+    statusRef.current = next;
+    setStatus(next);
   }, []);
 
+  const start = useCallback(async () => {
+    // No-op if a recording/transcription is already in flight.
+    if (statusRef.current !== "idle" && statusRef.current !== "done") return;
+    updateStatus("recording");
+    setResult(null);
+    setError(null);
+    try {
+      await engineRef.current!.load((p) => setLoadProgress(p));
+      await recorderRef.current!.start();
+    } catch (err) {
+      updateStatus("idle");
+      setError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }, [updateStatus]);
+
   const stop = useCallback(async () => {
-    setStatus("transcribing");
-    const audio = await recorderRef.current!.stop();
-    const text = await engineRef.current!.transcribe(audio);
-    const matched = matcherRef.current!.match(text);
-    setResult(matched);
-    setStatus("done");
-  }, []);
+    // Only meaningful once a recording is actually in progress.
+    if (statusRef.current !== "recording") return;
+    updateStatus("transcribing");
+    try {
+      const audio = await recorderRef.current!.stop();
+      const text = await engineRef.current!.transcribe(audio);
+      const matched = matcherRef.current!.match(text);
+      setResult(matched);
+      updateStatus("done");
+    } catch (err) {
+      updateStatus("idle");
+      setError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }, [updateStatus]);
 
   const cancel = useCallback(() => {
     recorderRef.current!.cancel();
-    setStatus("idle");
-  }, []);
+    updateStatus("idle");
+  }, [updateStatus]);
 
-  return { start, stop, cancel, status, result };
+  return { start, stop, cancel, status, result, error, loadProgress };
 }

@@ -9,7 +9,6 @@ export interface ModelLoadProgress {
 
 export interface TranscriptionEngineOptions {
   model?: string;
-  languages?: string[];
 }
 
 type Transcriber = (audio: unknown) => Promise<{ text: string }>;
@@ -23,6 +22,8 @@ export class TranscriptionEngine {
   }
 
   async load(onProgress: (p: ModelLoadProgress) => void): Promise<void> {
+    if (this.transcriber) return;
+
     try {
       this.transcriber = (await pipeline("automatic-speech-recognition", this.model, {
         device: "webgpu",

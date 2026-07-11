@@ -65,6 +65,14 @@ test("load() preserves the underlying error as cause", async () => {
   }
 });
 
+test("load() is idempotent: calling it twice only builds the pipeline once", async () => {
+  const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
+  const engine = new TranscriptionEngine();
+  await engine.load(() => {});
+  await engine.load(() => {});
+  expect(pipelineFn).toHaveBeenCalledTimes(1);
+});
+
 test("transcribe() returns trimmed text from the pipeline", async () => {
   const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
   const engine = new TranscriptionEngine();

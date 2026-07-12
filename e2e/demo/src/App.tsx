@@ -1,4 +1,4 @@
-import { useVoiceCommand, VoiceButton } from "@pwa-voice-interpreter/react";
+import { useVoiceCommand, VoiceButton } from "@hearsay-pwa/react";
 
 // Minimal illustrative integration (a "Pracomprá"-style shopping list) used as the
 // E2E harness target — see e2e/voice-flow.spec.ts and e2e/fixtures/README.md.

@@ -24,7 +24,7 @@ beforeEach(() => {
   transcribeMock.mockImplementation(async () => "adicionar três maçãs");
   loadMock.mockClear();
   loadMock.mockImplementation(async (_onProgress?: (p: unknown) => void) => {});
-  mock.module("@pwa-voice-interpreter/core", () => ({
+  mock.module("@hearsay-pwa/core", () => ({
     AudioRecorder: class {
       start = startMock;
       stop = stopMock;

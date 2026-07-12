@@ -1,4 +1,4 @@
-# pwa-voice-interpreter
+# hearsay-pwa
 
 🇺🇸 English | [🇧🇷 Português](README.pt-BR.md)
 
@@ -6,14 +6,14 @@ Client-side, cross-browser speech-to-text and voice-command matching for PWAs �
 
 ## Packages
 
-- `@pwa-voice-interpreter/core` — framework-agnostic recorder, Whisper transcription engine, command matcher.
-- `@pwa-voice-interpreter/react` — `useVoiceCommand` hook + headless `<VoiceButton />`.
+- `@hearsay-pwa/core` — framework-agnostic recorder, Whisper transcription engine, command matcher.
+- `@hearsay-pwa/react` — `useVoiceCommand` hook + headless `<VoiceButton />`.
 
 ## Quickstart (React)
 
 ```tsx
-import { useVoiceCommand } from "@pwa-voice-interpreter/react";
-import { VoiceButton } from "@pwa-voice-interpreter/react";
+import { useVoiceCommand } from "@hearsay-pwa/react";
+import { VoiceButton } from "@hearsay-pwa/react";
 
 function ShoppingList() {
   const { start, stop, status, result, error } = useVoiceCommand({

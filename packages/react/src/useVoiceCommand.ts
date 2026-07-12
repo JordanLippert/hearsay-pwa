@@ -6,7 +6,7 @@ import {
   type IntentDefinition,
   type VoiceResult,
   type ModelLoadProgress,
-} from "@pwa-voice-interpreter/core";
+} from "@hearsay-pwa/core";
 
 export type VoiceCommandStatus = "idle" | "recording" | "transcribing" | "done";
 

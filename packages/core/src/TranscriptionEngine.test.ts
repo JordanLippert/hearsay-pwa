@@ -7,10 +7,13 @@ const pipelineFn = mock(async (_task: string, _model: string, opts: any) => {
   opts.progress_callback?.({ status: "progress", progress: 50 });
   return transcribeFn;
 });
+const decodedSamples = new Float32Array([0.1, 0.2]);
+const readAudioFn = mock(async (_url: string, _samplingRate: number) => decodedSamples);
 
 beforeEach(() => {
   pipelineFn.mockClear();
   transcribeFn.mockClear();
+  readAudioFn.mockClear();
   // Restore the default (successful) implementation each test, since a prior
   // test's `mockImplementation`/`mockImplementationOnce` override otherwise
   // persists across tests (mockClear only clears call history, not behavior).
@@ -18,7 +21,7 @@ beforeEach(() => {
     opts.progress_callback?.({ status: "progress", progress: 50 });
     return transcribeFn;
   });
-  mock.module("@huggingface/transformers", () => ({ pipeline: pipelineFn }));
+  mock.module("@huggingface/transformers", () => ({ pipeline: pipelineFn, read_audio: readAudioFn }));
 });
 
 test("load() tries webgpu first and reports progress", async () => {
@@ -73,10 +76,20 @@ test("load() is idempotent: calling it twice only builds the pipeline once", asy
   expect(pipelineFn).toHaveBeenCalledTimes(1);
 });
 
-test("transcribe() returns trimmed text from the pipeline", async () => {
+test("transcribe() decodes the Blob to samples before passing it to the pipeline", async () => {
   const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
   const engine = new TranscriptionEngine();
   await engine.load(() => {});
   const text = await engine.transcribe(new Blob(["fake-audio"]));
   expect(text).toBe("adicionar três maçãs");
+  expect(readAudioFn.mock.calls[0][1]).toBe(16_000);
+  expect(transcribeFn.mock.calls[0][0]).toBe(decodedSamples);
+});
+
+test("transcribe() passes the configured language and task to the pipeline", async () => {
+  const { TranscriptionEngine } = await import(`./TranscriptionEngine?t=${Date.now()}`);
+  const engine = new TranscriptionEngine({ language: "portuguese" });
+  await engine.load(() => {});
+  await engine.transcribe(new Blob(["fake-audio"]));
+  expect(transcribeFn.mock.calls[0][1]).toEqual({ language: "portuguese", task: "transcribe" });
 });

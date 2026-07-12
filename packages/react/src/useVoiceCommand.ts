@@ -13,6 +13,7 @@ export type VoiceCommandStatus = "idle" | "recording" | "transcribing" | "done";
 export interface UseVoiceCommandOptions {
   intents: IntentDefinition[];
   model?: string;
+  language?: string;
 }
 
 export function useVoiceCommand(options: UseVoiceCommandOptions) {
@@ -30,7 +31,8 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   const statusRef = useRef<VoiceCommandStatus>("idle");
 
   if (!recorderRef.current) recorderRef.current = new AudioRecorder();
-  if (!engineRef.current) engineRef.current = new TranscriptionEngine({ model: options.model });
+  if (!engineRef.current)
+    engineRef.current = new TranscriptionEngine({ model: options.model, language: options.language });
   if (!matcherRef.current) matcherRef.current = new CommandMatcher(options.intents);
 
   const updateStatus = useCallback((next: VoiceCommandStatus) => {

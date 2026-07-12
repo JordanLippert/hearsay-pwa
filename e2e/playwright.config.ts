@@ -7,6 +7,13 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5173",
   },
+  webServer: {
+    command: "bun run --cwd demo dev",
+    cwd: __dirname,
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000,
+  },
   projects: [
     {
       // Fake-audio-capture flags below are Chromium-specific — kept off the
@@ -15,6 +22,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        channel: "chrome",
         launchOptions: {
           args: [
             "--use-fake-ui-for-media-stream",

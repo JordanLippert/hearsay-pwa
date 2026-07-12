@@ -1,7 +1,7 @@
 {
   "name": "pwa-voice-interpreter",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "e2e/demo"],
   "scripts": {
     "test": "bun test packages",
     "test:e2e": "playwright test --config e2e/playwright.config.ts"

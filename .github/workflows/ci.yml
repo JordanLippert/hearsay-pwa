@@ -24,7 +24,6 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event_name == 'workflow_dispatch'
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
     steps:
@@ -34,4 +33,9 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install
+      # Playwright's bundled Chromium ("headless shell") has no working
+      # WebGPU/WASM backend in this environment — @huggingface/transformers
+      # fails to load any backend. Real Chrome (channel: "chrome" in
+      # playwright.config.ts) is required and isn't preinstalled in the image.
+      - run: bunx playwright install --with-deps chrome
       - run: bunx playwright test --config e2e/playwright.config.ts

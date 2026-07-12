@@ -1,15 +1,15 @@
 # pwa-voice-interpreter
 
-🇺🇸 English | [🇧🇷 Português](README.pt-BR.md)
+[🇺🇸 English](README.md) | 🇧🇷 Português
 
-Client-side, cross-browser speech-to-text and voice-command matching for PWAs — no native `SpeechRecognition` API dependency, works the same in iOS Safari, Android Chrome, and desktop.
+Reconhecimento de voz e correspondência de comandos de voz 100% client-side para PWAs — sem depender da API nativa `SpeechRecognition`, funciona igual no Safari iOS, Chrome Android e desktop.
 
-## Packages
+## Pacotes
 
-- `@pwa-voice-interpreter/core` — framework-agnostic recorder, Whisper transcription engine, command matcher.
-- `@pwa-voice-interpreter/react` — `useVoiceCommand` hook + headless `<VoiceButton />`.
+- `@pwa-voice-interpreter/core` — gravador agnóstico de framework, motor de transcrição Whisper, matcher de comandos.
+- `@pwa-voice-interpreter/react` — hook `useVoiceCommand` + `<VoiceButton />` headless.
 
-## Quickstart (React)
+## Início rápido (React)
 
 ```tsx
 import { useVoiceCommand } from "@pwa-voice-interpreter/react";
@@ -26,7 +26,7 @@ function ShoppingList() {
   return (
     <>
       <VoiceButton mode="press-release" onStart={start} onStop={stop}>
-        {status === "recording" ? "Recording…" : "Hold to talk"}
+        {status === "recording" ? "Gravando…" : "Segure para falar"}
       </VoiceButton>
       {error && <p role="alert">{error.message}</p>}
     </>
@@ -34,13 +34,13 @@ function ShoppingList() {
 }
 ```
 
-## Development
+## Desenvolvimento
 
 ```bash
 bun install
 bun test packages
 ```
 
-## License
+## Licença
 
 MIT

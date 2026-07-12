@@ -1,5 +1,5 @@
 {
-  "name": "pwa-voice-interpreter",
+  "name": "hearsay-pwa",
   "private": true,
   "workspaces": ["packages/*", "e2e/demo"],
   "scripts": {

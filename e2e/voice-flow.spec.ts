@@ -12,6 +12,9 @@ test("recording the fixture audio resolves to a matched add_item command", async
   // root-caused.
   page.on("console", (msg) => console.log(`[browser console] ${msg.type()}: ${msg.text()}`));
   page.on("pageerror", (err) => console.log(`[browser pageerror] ${err.message}`));
+  page.on("response", (res) => {
+    if (!res.ok()) console.log(`[response] ${res.status()} ${res.url()}`);
+  });
   const seenStatuses = new Set<string>();
   const poll = setInterval(async () => {
     try {

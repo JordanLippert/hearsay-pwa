@@ -1,6 +1,7 @@
 {
   "name": "hearsay-pwa",
   "private": true,
+  "license": "MIT",
   "workspaces": ["packages/*", "e2e/demo"],
   "scripts": {
     "test": "bun test packages",

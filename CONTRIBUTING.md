@@ -23,8 +23,10 @@ confirmed by direct investigation (same test passes reliably from a local
 machine, fails consistently from `ubuntu-latest` runners). This is an
 external, third-party infrastructure restriction, not a bug in this repo.
 
-Because of this, `e2e` is **not** a required status check for merging (only
-`unit` is) — a failing `e2e` job in CI doesn't block a PR.
+Because of this, the `e2e` job doesn't run automatically on push/PR at all —
+it's gated to manual trigger only (`workflow_dispatch` from the Actions tab).
+It's also **not** a required status check for merging (only `unit` is), for
+the same reason.
 
 **If your PR touches the voice/transcription pipeline** (anything under
 `packages/core/src/TranscriptionEngine.ts`, `packages/react/`, or

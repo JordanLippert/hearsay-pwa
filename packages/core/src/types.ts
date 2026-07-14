@@ -12,6 +12,13 @@ export class ModelLoadError extends Error {
   }
 }
 
+export class WaveformError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "WaveformError";
+  }
+}
+
 export type VoiceResult =
   | { status: "no_speech" }
   | { status: "no_match"; text: string }

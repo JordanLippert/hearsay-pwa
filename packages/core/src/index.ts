@@ -3,4 +3,5 @@ export { AudioRecorder } from "./AudioRecorder";
 export { TranscriptionEngine } from "./TranscriptionEngine";
 export type { ModelLoadProgress, TranscriptionEngineOptions } from "./TranscriptionEngine";
 export type { VoiceResult, IntentDefinition } from "./types";
-export { MicPermissionError, ModelLoadError } from "./types";
+export { MicPermissionError, ModelLoadError, WaveformError } from "./types";
+export { computeWaveform } from "./Waveform";

@@ -44,7 +44,7 @@ beforeEach(() => {
 });
 
 test("start() moves status to recording, stop() resolves to matched result", async () => {
-  const { useVoiceCommand } = await import(`./useVoiceCommand?t=${Date.now()}`);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
   const { result } = renderHook(() =>
     useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
   );
@@ -73,7 +73,7 @@ test("start() rejecting resets status to idle and surfaces the error", async () 
   startMock.mockImplementation(async () => {
     throw new Error("mic permission denied");
   });
-  const { useVoiceCommand } = await import(`./useVoiceCommand?t=${Date.now()}`);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
   const { result } = renderHook(() =>
     useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
   );
@@ -91,7 +91,7 @@ test("stop() rejecting resets status to idle and surfaces the error", async () =
   transcribeMock.mockImplementation(async () => {
     throw new Error("model load failed");
   });
-  const { useVoiceCommand } = await import(`./useVoiceCommand?t=${Date.now()}`);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
   const { result } = renderHook(() =>
     useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
   );
@@ -114,7 +114,7 @@ test("loadProgress updates as the engine's load() reports progress", async () =>
   loadMock.mockImplementation(async (onProgress?: (p: unknown) => void) => {
     onProgress?.({ status: "progress", progress: 42 });
   });
-  const { useVoiceCommand } = await import(`./useVoiceCommand?t=${Date.now()}`);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
   const { result } = renderHook(() =>
     useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
   );
@@ -129,7 +129,7 @@ test("loadProgress updates as the engine's load() reports progress", async () =>
 });
 
 test("a rapid second start() call while already recording is a no-op", async () => {
-  const { useVoiceCommand } = await import(`./useVoiceCommand?t=${Date.now()}`);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
   const { result } = renderHook(() =>
     useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
   );

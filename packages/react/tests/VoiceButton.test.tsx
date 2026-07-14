@@ -1,6 +1,6 @@
 import { test, expect, mock, afterEach } from "bun:test";
 import { render, fireEvent, cleanup } from "@testing-library/react";
-import { VoiceButton } from "./VoiceButton";
+import { VoiceButton } from "../src/VoiceButton";
 
 afterEach(() => {
   cleanup();

@@ -43,4 +43,4 @@ bun test packages
 
 ## Licença
 
-MIT
+[MIT](LICENSE)

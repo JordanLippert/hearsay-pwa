@@ -109,15 +109,22 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
       const audio = await recorderRef.current!.stop();
       if (!isMountedRef.current) return;
       setAudioBlob(audio);
-      try {
-        const bars = await computeWaveform(audio, options.waveformBars ?? 50);
-        if (isMountedRef.current) setWaveform(bars);
-      } catch {
-        // Waveform is a visualization nicety -- never let it block transcription.
-        if (isMountedRef.current) setWaveform(null);
-      }
-      const text = await engineRef.current!.transcribe(audio);
+
+      // Waveform decode and transcription both only read `audio` and don't depend on
+      // each other -- run them concurrently instead of paying their latency serially.
+      const [waveformResult, transcribeResult] = await Promise.allSettled([
+        computeWaveform(audio, options.waveformBars ?? 50),
+        engineRef.current!.transcribe(audio),
+      ]);
       if (!isMountedRef.current) return;
+
+      // Waveform is a visualization nicety -- never let its failure block transcription.
+      setWaveform(waveformResult.status === "fulfilled" ? waveformResult.value : null);
+
+      if (transcribeResult.status === "rejected") {
+        throw transcribeResult.reason;
+      }
+      const text = transcribeResult.value;
       const matched = matcherRef.current!.match(text);
       setResult(matched);
       updateStatus("done");

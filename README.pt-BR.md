@@ -46,6 +46,24 @@ Se você já tem sua própria lógica de parsing de comandos e não precisa do `
 
 `model` usa `onnx-community/whisper-tiny` por padrão, o build mais leve do Whisper, já que essa lib é pensada pra download mobile/PWA. Passe um modelo maior (ex: `onnx-community/whisper-base`) se precisar de mais precisão e puder pagar o download extra.
 
+### Retorno de `useVoiceCommand`
+
+| Campo | Descrição |
+|---|---|
+| `start()`, `stop()`, `cancel()` | Controlam o ciclo de vida da gravação. |
+| `status` | Ver [Valores de status](#valores-de-status). |
+| `result` | `VoiceResult` do `CommandMatcher` quando `status` é `"done"`. |
+| `error` | `MicPermissionError \| ModelLoadError \| Error \| null`. |
+| `loadProgress` | Progresso do download/init do modelo (`{ status, progress? }`), `null` antes do primeiro `start()`. |
+| `level` | Amplitude do mic ao vivo (`0`-`1`), atualizada continuamente enquanto `"recording"` — use pra bolha/onda animada. |
+| `waveform` | Barras de tamanho fixo (`0`-`1`) resumindo a gravação inteira, setado quando `"done"`; `null` se o decode falhar (nunca bloqueia a transcrição). Quantidade de barras via opção `waveformBars` (padrão `50`). |
+| `audioBlob` | O `Blob` `audio/webm` gravado, setado quando `"done"` — a lib não controla playback; ligue num `<audio>` você mesmo se precisar. |
+
+### Modos do `VoiceButton`
+
+- `mode="press-release"` — `onStart`/`onStop` disparam no press/release.
+- `mode="press-drag-lock"` — arrastar o ponteiro pra cima passando `lockThreshold` px (padrão `80`) trava a gravação ao soltar; `onLockChange?.(true)` dispara uma vez, e a UI de região de trava do próprio consumidor fica responsável por chamar `stop()` pra encerrar (não tem caminho de destravar embutido).
+
 ## Desenvolvimento
 
 ```bash

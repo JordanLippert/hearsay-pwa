@@ -25,7 +25,7 @@ export class TranscriptionEngine {
   private transcriber: Transcriber | null = null;
 
   constructor(options: TranscriptionEngineOptions = {}) {
-    this.model = options.model ?? "onnx-community/whisper-base";
+    this.model = options.model ?? "onnx-community/whisper-tiny";
     this.language = options.language;
   }
 

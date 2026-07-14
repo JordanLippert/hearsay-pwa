@@ -33,6 +33,13 @@ test("load() tries webgpu first and reports progress", async () => {
   expect(progress).toContain(50);
 });
 
+test("defaults to the tiny Whisper model when none is specified", async () => {
+  const { TranscriptionEngine } = await import(`../src/TranscriptionEngine?t=${Date.now()}`);
+  const engine = new TranscriptionEngine();
+  await engine.load(() => {});
+  expect(pipelineFn.mock.calls[0][1]).toBe("onnx-community/whisper-tiny");
+});
+
 test("load() falls back to wasm when webgpu pipeline creation fails", async () => {
   pipelineFn.mockImplementationOnce(async () => {
     throw new Error("webgpu unsupported");

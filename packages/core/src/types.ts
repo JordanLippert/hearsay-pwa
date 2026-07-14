@@ -19,6 +19,12 @@ export class WaveformError extends Error {
   }
 }
 
+/**
+ * If you only want the raw transcribed text and don't need intent matching, pass
+ * `intents: []` to `CommandMatcher`/`useVoiceCommand` — every result comes back as
+ * `{ status: "no_match", text }` (or `"no_speech"` for silence), and `.text` still
+ * carries the transcription.
+ */
 export type VoiceResult =
   | { status: "no_speech" }
   | { status: "no_match"; text: string }

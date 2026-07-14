@@ -9,7 +9,7 @@ import {
   type ModelLoadProgress,
 } from "@hearsay-pwa/core";
 
-export type VoiceCommandStatus = "idle" | "recording" | "transcribing" | "done";
+export type VoiceCommandStatus = "idle" | "loading-model" | "recording" | "transcribing" | "done";
 
 export interface UseVoiceCommandOptions {
   intents: IntentDefinition[];
@@ -48,6 +48,11 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   // component that's gone, with no cleanup effect left to fire again.
   const isMountedRef = useRef(true);
 
+  // Set when stop()/cancel() is called while status is still "loading-model" -- the
+  // mic must never open for a recording the caller already asked to abandon. start()
+  // checks this right after load() resolves and skips recorder.start() entirely if set.
+  const stopRequestedDuringLoadRef = useRef(false);
+
   // Without this, a component that unmounts mid-recording leaves the mic stream and
   // the live-level AudioContext/rAF loop running forever -- nothing else would ever
   // call stop()/cancel() again. cancel() is safe to call even if nothing was ever
@@ -68,7 +73,8 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   const start = useCallback(async () => {
     // No-op if a recording/transcription is already in flight.
     if (statusRef.current !== "idle" && statusRef.current !== "done") return;
-    updateStatus("recording");
+    stopRequestedDuringLoadRef.current = false;
+    updateStatus("loading-model");
     setResult(null);
     setError(null);
     setWaveform(null);
@@ -83,6 +89,14 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
         // that no longer exists with no cleanup effect left to release it later.
         return;
       }
+      if (stopRequestedDuringLoadRef.current) {
+        // stop()/cancel() already fired while we were loading -- honor that instead
+        // of opening the mic for a recording the caller already abandoned.
+        stopRequestedDuringLoadRef.current = false;
+        updateStatus("idle");
+        return;
+      }
+      updateStatus("recording");
       await recorderRef.current!.start((lvl) => {
         if (isMountedRef.current) setLevel(lvl);
       });
@@ -101,6 +115,15 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   }, [updateStatus]);
 
   const stop = useCallback(async () => {
+    if (statusRef.current === "loading-model") {
+      // The mic was never opened yet -- warn instead of failing silently, since this
+      // is otherwise an invisible no-op the caller could easily mistake for a bug.
+      stopRequestedDuringLoadRef.current = true;
+      console.warn(
+        "useVoiceCommand: stop() called before the model finished loading -- recording never started, waiting for the model to finish loading before releasing.",
+      );
+      return;
+    }
     // Only meaningful once a recording is actually in progress.
     if (statusRef.current !== "recording") return;
     updateStatus("transcribing");
@@ -136,6 +159,12 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   }, [updateStatus, options.waveformBars]);
 
   const cancel = useCallback(() => {
+    if (statusRef.current === "loading-model") {
+      stopRequestedDuringLoadRef.current = true;
+      console.warn(
+        "useVoiceCommand: cancel() called before the model finished loading -- recording never started, waiting for the model to finish loading before releasing.",
+      );
+    }
     recorderRef.current!.cancel();
     setLevel(0);
     updateStatus("idle");

@@ -26,13 +26,25 @@ function ShoppingList() {
   return (
     <>
       <VoiceButton mode="press-release" onStart={start} onStop={stop}>
-        {status === "recording" ? "Gravando…" : "Segure para falar"}
+        {status === "loading-model" ? "Carregando…" : status === "recording" ? "Gravando…" : "Segure para falar"}
       </VoiceButton>
       {error && <p role="alert">{error.message}</p>}
     </>
   );
 }
 ```
+
+### Valores de status
+
+`status` é um de `"idle" | "loading-model" | "recording" | "transcribing" | "done"`. A primeira chamada de `start()` baixa/inicializa o modelo (pode levar 10–60s+ com cache frio) antes do microfone abrir — `"loading-model"` cobre essa janela pra UI mostrar um estado distinto em vez de um falso "gravando". Chamar `stop()`/`cancel()` durante `"loading-model"` é seguro: loga um `console.warn` e garante que o mic nunca abre depois que o carregamento termina.
+
+### Só o texto transcrito, sem correspondência de intents
+
+Se você já tem sua própria lógica de parsing de comandos e não precisa do `CommandMatcher`, passe `intents: []` — todo resultado volta como `{ status: "no_match", text }` (ou `"no_speech"` pra silêncio), e `.text` continua com a transcrição bruta.
+
+### Tamanho do modelo
+
+`model` usa `onnx-community/whisper-tiny` por padrão, o build mais leve do Whisper, já que essa lib é pensada pra download mobile/PWA. Passe um modelo maior (ex: `onnx-community/whisper-base`) se precisar de mais precisão e puder pagar o download extra.
 
 ## Desenvolvimento
 

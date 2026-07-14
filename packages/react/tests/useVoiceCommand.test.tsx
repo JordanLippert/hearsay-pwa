@@ -6,22 +6,25 @@ afterEach(() => {
   cleanup();
 });
 
-const startMock = mock(async () => {});
+const startMock = mock(async (_onLevel?: (level: number) => void) => {});
 const stopMock = mock(async () => new Blob(["fake-audio"]));
 const transcribeMock = mock(async () => "adicionar três maçãs");
 const loadMock = mock(async (_onProgress?: (p: unknown) => void) => {});
 const cancelMock = mock(() => {});
+const computeWaveformMock = mock(async (_blob: Blob, _barCount: number) => [0, 0, 0]);
 
 beforeEach(() => {
   startMock.mockClear();
   stopMock.mockClear();
   transcribeMock.mockClear();
   cancelMock.mockClear();
+  computeWaveformMock.mockClear();
   // Restore default (successful) implementations, since a prior test's
   // mockImplementationOnce override otherwise persists across tests.
   startMock.mockImplementation(async () => {});
   stopMock.mockImplementation(async () => new Blob(["fake-audio"]));
   transcribeMock.mockImplementation(async () => "adicionar três maçãs");
+  computeWaveformMock.mockImplementation(async () => [0, 0, 0]);
   loadMock.mockClear();
   loadMock.mockImplementation(async (_onProgress?: (p: unknown) => void) => {});
   mock.module("@hearsay-pwa/core", () => ({
@@ -40,6 +43,7 @@ beforeEach(() => {
         return { status: "matched", intent: "add_item", text, params: { item: "três maçãs" } };
       }
     },
+    computeWaveform: computeWaveformMock,
   }));
 });
 
@@ -144,4 +148,83 @@ test("a rapid second start() call while already recording is a no-op", async () 
 
   expect(startMock).toHaveBeenCalledTimes(1);
   expect(result.current.status).toBe("recording");
+});
+
+test("level updates as the recorder's onLevel callback fires during start()", async () => {
+  startMock.mockImplementation(async (onLevel?: (level: number) => void) => {
+    onLevel?.(0.75);
+  });
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  expect(result.current.level).toBe(0);
+
+  await act(async () => {
+    await result.current.start();
+  });
+
+  expect(result.current.level).toBe(0.75);
+});
+
+test("stop() populates waveform and audioBlob from the recorded audio", async () => {
+  computeWaveformMock.mockImplementation(async () => [0.1, 0.2, 0.3]);
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  await act(async () => {
+    await result.current.stop();
+  });
+
+  await waitFor(() => expect(result.current.status).toBe("done"));
+  expect(result.current.waveform).toEqual([0.1, 0.2, 0.3]);
+  expect(result.current.audioBlob).toBeInstanceOf(Blob);
+});
+
+test("a computeWaveform failure does not block transcribe() from completing", async () => {
+  computeWaveformMock.mockImplementation(async () => {
+    throw new Error("decode failed");
+  });
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  await act(async () => {
+    await result.current.stop();
+  });
+
+  await waitFor(() => expect(result.current.status).toBe("done"));
+  expect(result.current.waveform).toBeNull();
+  expect(result.current.result).toEqual({
+    status: "matched",
+    text: "adicionar três maçãs",
+    intent: "add_item",
+    params: { item: "três maçãs" },
+  });
+});
+
+test("unmounting the component releases the recorder instead of leaking the mic/AudioContext", async () => {
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result, unmount } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.status).toBe("recording");
+
+  unmount();
+
+  expect(cancelMock).toHaveBeenCalledTimes(1);
 });

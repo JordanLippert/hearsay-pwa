@@ -40,12 +40,22 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
     engineRef.current = new TranscriptionEngine({ model: options.model, language: options.language });
   if (!matcherRef.current) matcherRef.current = new CommandMatcher(options.intents);
 
+  // Tracks whether the component is still mounted so start()/stop() can bail out of
+  // their own continuations after an `await` if the component unmounted in the
+  // meantime -- e.g. mid-model-load. Without this, only the recorder/stream that
+  // already exist at unmount time get released (via the cleanup below); a call to
+  // recorder.start() that resolves AFTER unmount would still open the mic for a
+  // component that's gone, with no cleanup effect left to fire again.
+  const isMountedRef = useRef(true);
+
   // Without this, a component that unmounts mid-recording leaves the mic stream and
   // the live-level AudioContext/rAF loop running forever -- nothing else would ever
   // call stop()/cancel() again. cancel() is safe to call even if nothing was ever
   // started (AudioRecorder's cancel()/releaseStream() are no-ops in that case).
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       recorderRef.current?.cancel();
     };
   }, []);
@@ -64,9 +74,26 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
     setWaveform(null);
     setAudioBlob(null);
     try {
-      await engineRef.current!.load((p) => setLoadProgress(p));
-      await recorderRef.current!.start((lvl) => setLevel(lvl));
+      await engineRef.current!.load((p) => {
+        if (isMountedRef.current) setLoadProgress(p);
+      });
+      if (!isMountedRef.current) {
+        // Unmounted while the model was loading -- nothing rendered this update
+        // anymore, and starting the recorder now would open the mic for a component
+        // that no longer exists with no cleanup effect left to release it later.
+        return;
+      }
+      await recorderRef.current!.start((lvl) => {
+        if (isMountedRef.current) setLevel(lvl);
+      });
+      if (!isMountedRef.current) {
+        // Unmounted while getUserMedia() was pending -- the recorder is now live
+        // for a gone component; release it ourselves since the cleanup effect
+        // already ran before this resolved.
+        recorderRef.current!.cancel();
+      }
     } catch (err) {
+      if (!isMountedRef.current) return;
       updateStatus("idle");
       setLevel(0);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -80,19 +107,22 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
     setLevel(0);
     try {
       const audio = await recorderRef.current!.stop();
+      if (!isMountedRef.current) return;
       setAudioBlob(audio);
       try {
         const bars = await computeWaveform(audio, options.waveformBars ?? 50);
-        setWaveform(bars);
+        if (isMountedRef.current) setWaveform(bars);
       } catch {
         // Waveform is a visualization nicety -- never let it block transcription.
-        setWaveform(null);
+        if (isMountedRef.current) setWaveform(null);
       }
       const text = await engineRef.current!.transcribe(audio);
+      if (!isMountedRef.current) return;
       const matched = matcherRef.current!.match(text);
       setResult(matched);
       updateStatus("done");
     } catch (err) {
+      if (!isMountedRef.current) return;
       updateStatus("idle");
       setError(err instanceof Error ? err : new Error(String(err)));
     }

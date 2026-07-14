@@ -228,3 +228,35 @@ test("unmounting the component releases the recorder instead of leaking the mic/
 
   expect(cancelMock).toHaveBeenCalledTimes(1);
 });
+
+test("unmounting while the model is still loading prevents the recorder from starting afterward", async () => {
+  let resolveLoad!: () => void;
+  loadMock.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveLoad = resolve;
+      }),
+  );
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result, unmount } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  let startPromise!: Promise<void>;
+  act(() => {
+    startPromise = result.current.start();
+  });
+  expect(result.current.status).toBe("recording");
+
+  unmount();
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+
+  resolveLoad();
+  await act(async () => {
+    await startPromise;
+  });
+
+  // The model finished loading only after the component was gone -- start()
+  // must bail out instead of opening the mic for a component that no longer exists.
+  expect(startMock).not.toHaveBeenCalled();
+});

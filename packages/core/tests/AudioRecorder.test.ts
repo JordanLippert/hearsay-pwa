@@ -1,5 +1,5 @@
 // packages/core/tests/AudioRecorder.test.ts
-import { test, expect, beforeEach, afterAll } from "bun:test";
+import { test, expect, beforeEach, afterAll, spyOn } from "bun:test";
 import { MicPermissionError } from "../src/types";
 
 // Bun runs all test files in one process, so globalThis mutations below would
@@ -8,6 +8,9 @@ import { MicPermissionError } from "../src/types";
 // whatever was there before we start faking, and put it back in afterAll.
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
 const originalMediaRecorder = Object.getOwnPropertyDescriptor(globalThis, "MediaRecorder");
+const originalAudioContext = Object.getOwnPropertyDescriptor(globalThis, "AudioContext");
+const originalRaf = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+const originalCaf = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
 
 class FakeMediaRecorder {
   static instances: FakeMediaRecorder[] = [];
@@ -30,9 +33,41 @@ class FakeMediaRecorder {
   }
 }
 
+class FakeAnalyserNode {
+  frequencyBinCount = 4;
+  getByteTimeDomainData(arr: Uint8Array) {
+    arr.fill(200); // consistently off-center -> predictable non-zero level
+  }
+}
+
+class FakeAudioContext {
+  static instances: FakeAudioContext[] = [];
+  closed = false;
+  constructor() {
+    FakeAudioContext.instances.push(this);
+  }
+  createMediaStreamSource(_stream: unknown) {
+    return { connect: () => {} };
+  }
+  createAnalyser() {
+    return new FakeAnalyserNode();
+  }
+  close() {
+    this.closed = true;
+    return Promise.resolve();
+  }
+}
+
 function installFakes(getUserMediaImpl: () => Promise<unknown>) {
   FakeMediaRecorder.instances = [];
+  FakeAudioContext.instances = [];
   (globalThis as any).MediaRecorder = FakeMediaRecorder;
+  (globalThis as any).AudioContext = FakeAudioContext;
+  // requestAnimationFrame via a real (tiny) setTimeout so the recursive scheduling
+  // in AudioRecorder's level-monitoring loop doesn't recurse synchronously.
+  (globalThis as any).requestAnimationFrame = (cb: (t: number) => void) =>
+    setTimeout(() => cb(0), 0) as unknown as number;
+  (globalThis as any).cancelAnimationFrame = (id: number) => clearTimeout(id);
   // Use defineProperty instead of direct assignment: once happy-dom's global
   // preload (packages/react/happydom.setup.ts, wired via the root bunfig.toml
   // for React component tests) registers a getter-only `navigator` on
@@ -56,6 +91,21 @@ afterAll(() => {
     Object.defineProperty(globalThis, "MediaRecorder", originalMediaRecorder);
   } else {
     delete (globalThis as any).MediaRecorder;
+  }
+  if (originalAudioContext) {
+    Object.defineProperty(globalThis, "AudioContext", originalAudioContext);
+  } else {
+    delete (globalThis as any).AudioContext;
+  }
+  if (originalRaf) {
+    Object.defineProperty(globalThis, "requestAnimationFrame", originalRaf);
+  } else {
+    delete (globalThis as any).requestAnimationFrame;
+  }
+  if (originalCaf) {
+    Object.defineProperty(globalThis, "cancelAnimationFrame", originalCaf);
+  } else {
+    delete (globalThis as any).cancelAnimationFrame;
   }
 });
 
@@ -102,4 +152,38 @@ test("start() throws when called again while already recording", async () => {
   await expect(recorder.start()).rejects.toThrow(
     "AudioRecorder.start() called while already recording",
   );
+});
+
+test("onLevel is called with amplitude values while recording", async () => {
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
+  const recorder = new AudioRecorder();
+  const levels: number[] = [];
+  await recorder.start((level: number) => levels.push(level));
+
+  // Let a couple of the fake-rAF-driven ticks fire.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await recorder.stop();
+
+  expect(levels.length).toBeGreaterThan(0);
+  expect(levels[0]).toBeGreaterThan(0);
+});
+
+test("a level-monitoring setup failure logs a warning and does not prevent start()", async () => {
+  const workingAudioContext = (globalThis as any).AudioContext;
+  (globalThis as any).AudioContext = class {
+    constructor() {
+      throw new Error("Web Audio API unavailable");
+    }
+  };
+  const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
+  const recorder = new AudioRecorder();
+  await recorder.start(() => {});
+
+  expect(FakeMediaRecorder.instances[0].state).toBe("recording");
+  expect(warnSpy).toHaveBeenCalled();
+
+  warnSpy.mockRestore();
+  (globalThis as any).AudioContext = workingAudioContext;
 });

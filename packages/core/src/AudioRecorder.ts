@@ -4,8 +4,10 @@ export class AudioRecorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private audioContext: AudioContext | null = null;
+  private levelFrameId: number | null = null;
 
-  async start(): Promise<void> {
+  async start(onLevel?: (level: number) => void): Promise<void> {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       throw new Error("AudioRecorder.start() called while already recording");
     }
@@ -16,6 +18,10 @@ export class AudioRecorder {
       })) as MediaStream;
     } catch (cause) {
       throw new MicPermissionError("Microphone permission denied or unavailable", { cause });
+    }
+
+    if (onLevel) {
+      this.startLevelMonitoring(onLevel);
     }
 
     try {
@@ -58,7 +64,44 @@ export class AudioRecorder {
     this.releaseStream();
   }
 
+  private startLevelMonitoring(onLevel: (level: number) => void): void {
+    try {
+      this.audioContext = new AudioContext();
+      const source = this.audioContext.createMediaStreamSource(this.stream!);
+      const analyser = this.audioContext.createAnalyser();
+      source.connect(analyser);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const tick = () => {
+        analyser.getByteTimeDomainData(dataArray);
+        let sumSquares = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const normalized = (dataArray[i] - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / dataArray.length);
+        onLevel(Math.min(1, rms));
+        this.levelFrameId = requestAnimationFrame(tick);
+      };
+      this.levelFrameId = requestAnimationFrame(tick);
+    } catch (cause) {
+      console.warn("AudioRecorder: level monitoring unavailable, continuing without it.", cause);
+    }
+  }
+
+  private stopLevelMonitoring(): void {
+    if (this.levelFrameId !== null) {
+      cancelAnimationFrame(this.levelFrameId);
+      this.levelFrameId = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+    }
+  }
+
   private releaseStream(): void {
+    this.stopLevelMonitoring();
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
   }

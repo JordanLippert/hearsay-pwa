@@ -24,6 +24,11 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Known limitation (see CONTRIBUTING.md): Hugging Face's Xet CDN blocks model
+    # weight downloads from GitHub Actions runners with 403s, so this can't pass
+    # reliably here -- it only ever shows red on every PR/push with no actionable
+    # signal. Gated to manual trigger; run locally (bun run test:e2e) instead.
+    if: github.event_name == 'workflow_dispatch'
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
     steps:

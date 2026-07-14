@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { MicPermissionError, ModelLoadError } from "../src/types";
+import { MicPermissionError, ModelLoadError, WaveformError } from "../src/types";
 
 test("MicPermissionError is an Error with the right name", () => {
   const err = new MicPermissionError("mic denied");
@@ -15,4 +15,12 @@ test("ModelLoadError is an Error with the right name", () => {
   expect(err).toBeInstanceOf(ModelLoadError);
   expect(err.name).toBe("ModelLoadError");
   expect(err.message).toBe("download failed");
+});
+
+test("WaveformError is an Error with the right name", () => {
+  const err = new WaveformError("decode failed");
+  expect(err).toBeInstanceOf(Error);
+  expect(err).toBeInstanceOf(WaveformError);
+  expect(err.name).toBe("WaveformError");
+  expect(err.message).toBe("decode failed");
 });

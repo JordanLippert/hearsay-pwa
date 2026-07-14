@@ -1,6 +1,6 @@
 // packages/core/src/AudioRecorder.test.ts
 import { test, expect, beforeEach, afterAll } from "bun:test";
-import { MicPermissionError } from "./types";
+import { MicPermissionError } from "../src/types";
 
 // Bun runs all test files in one process, so globalThis mutations below would
 // otherwise leak into files that run after this one (e.g. React component
@@ -64,14 +64,14 @@ beforeEach(() => {
 });
 
 test("start() requests mic and begins recording", async () => {
-  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
   const recorder = new AudioRecorder();
   await recorder.start();
   expect(FakeMediaRecorder.instances[0].state).toBe("recording");
 });
 
 test("stop() returns the recorded audio blob", async () => {
-  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
   const recorder = new AudioRecorder();
   await recorder.start();
   const blob = await recorder.stop();
@@ -82,13 +82,13 @@ test("start() throws MicPermissionError when getUserMedia rejects", async () => 
   installFakes(async () => {
     throw new DOMException("denied", "NotAllowedError");
   });
-  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
   const recorder = new AudioRecorder();
   await expect(recorder.start()).rejects.toBeInstanceOf(MicPermissionError);
 });
 
 test("cancel() discards the recording without returning a blob", async () => {
-  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
   const recorder = new AudioRecorder();
   await recorder.start();
   recorder.cancel();
@@ -96,7 +96,7 @@ test("cancel() discards the recording without returning a blob", async () => {
 });
 
 test("start() throws when called again while already recording", async () => {
-  const { AudioRecorder } = await import(`./AudioRecorder?t=${Date.now()}`);
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
   const recorder = new AudioRecorder();
   await recorder.start();
   await expect(recorder.start()).rejects.toThrow(

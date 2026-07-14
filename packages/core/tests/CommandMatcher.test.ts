@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { CommandMatcher } from "./CommandMatcher";
+import { CommandMatcher } from "../src/CommandMatcher";
 
 const matcher = new CommandMatcher([
   { intent: "add_item", patterns: ["adicionar {item}", "add {item}"] },

@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { MicPermissionError, ModelLoadError } from "./types";
+import { MicPermissionError, ModelLoadError } from "../src/types";
 
 test("MicPermissionError is an Error with the right name", () => {
   const err = new MicPermissionError("mic denied");

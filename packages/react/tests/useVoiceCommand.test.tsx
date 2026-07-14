@@ -1,5 +1,5 @@
 // packages/react/tests/useVoiceCommand.test.tsx
-import { test, expect, mock, beforeEach, afterEach } from "bun:test";
+import { test, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
 import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 
 afterEach(() => {
@@ -246,7 +246,7 @@ test("unmounting while the model is still loading prevents the recorder from sta
   act(() => {
     startPromise = result.current.start();
   });
-  expect(result.current.status).toBe("recording");
+  expect(result.current.status).toBe("loading-model");
 
   unmount();
   expect(cancelMock).toHaveBeenCalledTimes(1);
@@ -259,4 +259,74 @@ test("unmounting while the model is still loading prevents the recorder from sta
   // The model finished loading only after the component was gone -- start()
   // must bail out instead of opening the mic for a component that no longer exists.
   expect(startMock).not.toHaveBeenCalled();
+});
+
+test("stop() called while the model is still loading warns and prevents the mic from opening once load finishes", async () => {
+  let resolveLoad!: () => void;
+  loadMock.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveLoad = resolve;
+      }),
+  );
+  const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  let startPromise!: Promise<void>;
+  act(() => {
+    startPromise = result.current.start();
+  });
+  expect(result.current.status).toBe("loading-model");
+
+  await act(async () => {
+    await result.current.stop();
+  });
+  expect(warnSpy).toHaveBeenCalledTimes(1);
+
+  resolveLoad();
+  await act(async () => {
+    await startPromise;
+  });
+
+  expect(startMock).not.toHaveBeenCalled();
+  expect(result.current.status).toBe("idle");
+  warnSpy.mockRestore();
+});
+
+test("cancel() called while the model is still loading warns and prevents the mic from opening once load finishes", async () => {
+  let resolveLoad!: () => void;
+  loadMock.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveLoad = resolve;
+      }),
+  );
+  const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  let startPromise!: Promise<void>;
+  act(() => {
+    startPromise = result.current.start();
+  });
+  expect(result.current.status).toBe("loading-model");
+
+  act(() => {
+    result.current.cancel();
+  });
+  expect(warnSpy).toHaveBeenCalledTimes(1);
+  expect(result.current.status).toBe("idle");
+
+  resolveLoad();
+  await act(async () => {
+    await startPromise;
+  });
+
+  expect(startMock).not.toHaveBeenCalled();
+  warnSpy.mockRestore();
 });

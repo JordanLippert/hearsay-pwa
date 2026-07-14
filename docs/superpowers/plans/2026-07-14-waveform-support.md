@@ -765,6 +765,8 @@ git commit -m "feat(core): export computeWaveform and WaveformError from the pub
 
 Adds a `waveformBars` option (default `50`, applied at this layer only — `computeWaveform` itself has no default). Adds `level`/`waveform`/`audioBlob` to the returned state. A `computeWaveform` failure never blocks `transcribe()` — `waveform` simply stays `null`.
 
+Also adds an unmount cleanup effect calling `recorder.cancel()`. Without it, a component that unmounts mid-recording (e.g. the user navigates away) leaves the mic stream, the live-level `AudioContext`, and its `requestAnimationFrame` loop running forever in the background — nothing in the component tree is left to ever call `stop()`/`cancel()` again. This gap predates this task (it existed for the plain mic stream before `AudioRecorder` had any Web Audio API resources), but adding an actively-running audio graph in Task 5 makes it a real, not just theoretical, leak — worth closing now rather than shipping alongside it.
+
 - [ ] **Step 1: Write the failing test**
 
 Replace the entire contents of `packages/react/tests/useVoiceCommand.test.tsx` with:
@@ -984,19 +986,35 @@ test("a computeWaveform failure does not block transcribe() from completing", as
     params: { item: "três maçãs" },
   });
 });
+
+test("unmounting the component releases the recorder instead of leaking the mic/AudioContext", async () => {
+  const { useVoiceCommand } = await import(`../src/useVoiceCommand?t=${Date.now()}`);
+  const { result, unmount } = renderHook(() =>
+    useVoiceCommand({ intents: [{ intent: "add_item", patterns: ["adicionar {item}"] }] }),
+  );
+
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.status).toBe("recording");
+
+  unmount();
+
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+});
 ```
 
 - [ ] **Step 2: Run test to verify the new tests fail**
 
 Run: `bun test packages/react/tests/useVoiceCommand.test.tsx`
-Expected: the 5 pre-existing tests PASS, the 3 new tests FAIL (`result.current.level`/`waveform`/`audioBlob` are `undefined`, not the expected values, since the hook doesn't return them yet).
+Expected: the 5 pre-existing tests PASS, the 4 new tests FAIL (`result.current.level`/`waveform`/`audioBlob` are `undefined` and `cancelMock` is never called on unmount, since the hook doesn't return/do any of that yet).
 
 - [ ] **Step 3: Write the implementation**
 
 Replace the entire contents of `packages/react/src/useVoiceCommand.ts` with:
 
 ```typescript
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AudioRecorder,
   TranscriptionEngine,
@@ -1037,6 +1055,16 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
   if (!engineRef.current)
     engineRef.current = new TranscriptionEngine({ model: options.model, language: options.language });
   if (!matcherRef.current) matcherRef.current = new CommandMatcher(options.intents);
+
+  // Without this, a component that unmounts mid-recording leaves the mic stream and
+  // the live-level AudioContext/rAF loop running forever -- nothing else would ever
+  // call stop()/cancel() again. cancel() is safe to call even if nothing was ever
+  // started (AudioRecorder's cancel()/releaseStream() are no-ops in that case).
+  useEffect(() => {
+    return () => {
+      recorderRef.current?.cancel();
+    };
+  }, []);
 
   const updateStatus = useCallback((next: VoiceCommandStatus) => {
     statusRef.current = next;
@@ -1110,12 +1138,12 @@ export function useVoiceCommand(options: UseVoiceCommandOptions) {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `bun test packages/react/tests/useVoiceCommand.test.tsx`
-Expected: PASS (8 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 5: Run the full workspace suite**
 
 Run: `bun test packages` (from repo root)
-Expected: `35 pass, 0 fail` across 7 files (24 in `packages/core` from Task 6 + 11 in `packages/react`: 8 in `useVoiceCommand.test.tsx` after this task's 3 additions, 3 in `VoiceButton.test.tsx`, unchanged).
+Expected: `36 pass, 0 fail` across 7 files (24 in `packages/core` from Task 6 + 12 in `packages/react`: 9 in `useVoiceCommand.test.tsx` after this task's 4 additions, 3 in `VoiceButton.test.tsx`, unchanged).
 
 - [ ] **Step 6: Commit**
 
@@ -1132,6 +1160,7 @@ git commit -m "feat(react): expose level, waveform, and audioBlob from useVoiceC
 - Live level monitoring, non-blocking + non-silent failure → Task 5.
 - `computeWaveform`, no default `barCount`, typed `WaveformError` → Task 4.
 - Hook's `level`/`waveform`/`audioBlob`/`waveformBars`, default 50 at the hook layer only, waveform failure never blocks `transcribe()` → Task 7.
+- Unmount cleanup (release mic/AudioContext/rAF loop if the component unmounts mid-recording) → Task 7.
 - Core barrel exports the two new public symbols → Task 6.
 - Test file relocation (both packages) → Tasks 1–2.
 

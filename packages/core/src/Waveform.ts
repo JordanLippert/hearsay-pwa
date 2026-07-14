@@ -1,5 +1,15 @@
 import { WaveformError } from "./types";
 
+/**
+ * Summarizes an audio Blob into `barCount` RMS-amplitude bars (0-1).
+ *
+ * Reads channel 0 only -- fine for the mono mic input `AudioRecorder` produces, but
+ * a stereo blob's other channel(s) are silently ignored. Decodes the entire buffer
+ * into memory up front, which is fine for short voice-command utterances but would
+ * be wasteful for long-form audio.
+ *
+ * Throws `WaveformError` (wrapping the original cause) if the audio can't be decoded.
+ */
 export async function computeWaveform(blob: Blob, barCount: number): Promise<number[]> {
   const arrayBuffer = await blob.arrayBuffer();
   const audioContext = new AudioContext();

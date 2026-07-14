@@ -1,4 +1,4 @@
-// packages/core/src/AudioRecorder.test.ts
+// packages/core/tests/AudioRecorder.test.ts
 import { test, expect, beforeEach, afterAll } from "bun:test";
 import { MicPermissionError } from "../src/types";
 

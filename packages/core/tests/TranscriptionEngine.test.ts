@@ -1,4 +1,4 @@
-// packages/core/src/TranscriptionEngine.test.ts
+// packages/core/tests/TranscriptionEngine.test.ts
 import { test, expect, mock, beforeEach } from "bun:test";
 import { ModelLoadError } from "../src/types";
 

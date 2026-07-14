@@ -1,4 +1,4 @@
-// packages/react/src/useVoiceCommand.test.tsx
+// packages/react/tests/useVoiceCommand.test.tsx
 import { test, expect, mock, beforeEach, afterEach } from "bun:test";
 import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 

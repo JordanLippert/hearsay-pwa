@@ -69,8 +69,13 @@ export class AudioRecorder {
       this.audioContext = new AudioContext();
       const source = this.audioContext.createMediaStreamSource(this.stream!);
       const analyser = this.audioContext.createAnalyser();
+      // A coarse level meter only needs a small window, not full spectral detail --
+      // 256 keeps the per-frame loop cheap. Sized from fftSize (not frequencyBinCount,
+      // which is for getByteFrequencyData) since getByteTimeDomainData below expects
+      // a buffer of fftSize samples.
+      analyser.fftSize = 256;
       source.connect(analyser);
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const dataArray = new Uint8Array(analyser.fftSize);
 
       const tick = () => {
         analyser.getByteTimeDomainData(dataArray);
@@ -85,6 +90,11 @@ export class AudioRecorder {
       };
       this.levelFrameId = requestAnimationFrame(tick);
     } catch (cause) {
+      // Tear down immediately rather than leaving a partially-set-up context open
+      // for the rest of the recording (releaseStream() would eventually close it
+      // too, but there's no reason to wait).
+      this.audioContext?.close().catch(() => {});
+      this.audioContext = null;
       console.warn("AudioRecorder: level monitoring unavailable, continuing without it.", cause);
     }
   }

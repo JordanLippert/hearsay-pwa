@@ -187,3 +187,23 @@ test("a level-monitoring setup failure logs a warning and does not prevent start
   warnSpy.mockRestore();
   (globalThis as any).AudioContext = workingAudioContext;
 });
+
+test("a failure after the AudioContext is constructed still closes it immediately", async () => {
+  class PartiallyBrokenAudioContext extends FakeAudioContext {
+    createAnalyser(): never {
+      throw new Error("createAnalyser unsupported");
+    }
+  }
+  (globalThis as any).AudioContext = PartiallyBrokenAudioContext;
+  const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+
+  const { AudioRecorder } = await import(`../src/AudioRecorder?t=${Date.now()}`);
+  const recorder = new AudioRecorder();
+  await recorder.start(() => {});
+
+  expect(FakeMediaRecorder.instances[0].state).toBe("recording");
+  expect(warnSpy).toHaveBeenCalled();
+  expect(FakeAudioContext.instances[0].closed).toBe(true);
+
+  warnSpy.mockRestore();
+});

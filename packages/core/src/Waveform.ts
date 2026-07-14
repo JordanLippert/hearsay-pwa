@@ -11,6 +11,10 @@ import { WaveformError } from "./types";
  * Throws `WaveformError` (wrapping the original cause) if the audio can't be decoded.
  */
 export async function computeWaveform(blob: Blob, barCount: number): Promise<number[]> {
+  if (!Number.isInteger(barCount) || barCount <= 0) {
+    throw new RangeError(`computeWaveform: barCount must be a positive integer (got ${barCount})`);
+  }
+
   const arrayBuffer = await blob.arrayBuffer();
   const audioContext = new AudioContext();
   let audioBuffer: AudioBuffer;

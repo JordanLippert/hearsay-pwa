@@ -35,6 +35,18 @@ test("computeWaveform resolves an array of exactly barCount length", async () =>
   bars.forEach((bar: number) => expect(bar).toBeGreaterThan(0));
 });
 
+test("computeWaveform rejects with RangeError for a non-positive-integer barCount", async () => {
+  installFakeAudioContext(new Float32Array(1000).fill(0.5));
+  const { computeWaveform } = await import(`../src/Waveform?t=${Date.now()}`);
+  const blob = new Blob(["fake-audio"]);
+
+  await expect(computeWaveform(blob, 0)).rejects.toBeInstanceOf(RangeError);
+  await expect(computeWaveform(blob, -5)).rejects.toBeInstanceOf(RangeError);
+  await expect(computeWaveform(blob, 3.5)).rejects.toBeInstanceOf(RangeError);
+  await expect(computeWaveform(blob, NaN)).rejects.toBeInstanceOf(RangeError);
+  await expect(computeWaveform(blob, Infinity)).rejects.toBeInstanceOf(RangeError);
+});
+
 test("computeWaveform rejects with WaveformError wrapping the decode failure", async () => {
   installFakeAudioContext(new Float32Array(), true);
   const { computeWaveform } = await import(`../src/Waveform?t=${Date.now()}`);

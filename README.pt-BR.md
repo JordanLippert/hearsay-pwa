@@ -64,6 +64,39 @@ Se você já tem sua própria lógica de parsing de comandos e não precisa do `
 - `mode="press-release"` — `onStart`/`onStop` disparam no press/release.
 - `mode="press-drag-lock"` — arrastar o ponteiro pra cima passando `lockThreshold` px (padrão `80`) trava a gravação ao soltar; `onLockChange?.(true)` dispara uma vez, e a UI de região de trava do próprio consumidor fica responsável por chamar `stop()` pra encerrar (não tem caminho de destravar embutido).
 
+## Instalação (ainda sem registro no npm)
+
+Esse monorepo não é publicado no npm — releases são só tags do git + GitHub Releases (ver [CONTRIBUTING.md](CONTRIBUTING.md)). Duas consequências pra consumir de outro projeto:
+
+- `bun add github:JordanLippert/hearsay-pwa` (ou equivalente npm/yarn/pnpm) não funciona: instaladores de Git sempre puxam o `package.json` da **raiz do repo**, que é `private` e não é um pacote utilizável sozinho — não existe como apontar pra uma subpasta tipo `packages/react`.
+- A dependência de `@hearsay-pwa/react` em `@hearsay-pwa/core` é declarada como `workspace:*`, que só resolve dentro de um workspace de verdade — não como dependência instalada avulsa num projeto qualquer.
+
+O jeito suportado de consumir (testado e confirmado funcionando com Bun): clone esse repo como sibling/submodule do seu projeto, e adicione o `packages/*` dele no **seu próprio** array `workspaces`, pra virarem membros reais do seu workspace Bun.
+
+```jsonc
+// seu-app/package.json (raiz)
+{
+  "name": "seu-app",
+  "workspaces": ["app", "vendor/hearsay-pwa/packages/*"]
+}
+```
+
+```bash
+git submodule add https://github.com/JordanLippert/hearsay-pwa.git vendor/hearsay-pwa
+# ou: git clone https://github.com/JordanLippert/hearsay-pwa.git vendor/hearsay-pwa
+```
+
+```jsonc
+// app/package.json
+{
+  "dependencies": { "@hearsay-pwa/react": "workspace:*" }
+}
+```
+
+Aí `bun install` na sua raiz — o Bun resolve `@hearsay-pwa/react` como membro do workspace, e a dependência dele em `@hearsay-pwa/core` (`workspace:*`) resolve do mesmo jeito (dentro de `packages/react/node_modules/@hearsay-pwa/core`), sem nenhum registro npm envolvido. Puxar uma tag nova no submodule e rodar `bun install` de novo já pega a atualização.
+
+Isso exige que seu projeto use Bun (ou outro gerenciador com workspaces configurado igual) — npm/yarn/pnpm workspaces devem funcionar de forma análoga, mas só o caminho com Bun acima foi testado contra esse repo.
+
 ## Desenvolvimento
 
 ```bash
